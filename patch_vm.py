@@ -25,7 +25,7 @@ def update_packages(option):
                 resp = os.popen(cmd)
                 logging.info(resp)
 
-        exception Exception as e:
+        except Exception as e:
             cmd = "yum install --skip-broken {}-{}".format(package_name, required_version)
             resp = os.popen(cmd)
             logging.info(resp)
