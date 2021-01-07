@@ -1,13 +1,34 @@
 import argparse
 import json
-import sys
 import logging
+import os
+import sys
 
 logging.basicConfig(format='[%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S%p]')
 
 ignore_keywords = ["Package", "Installed", "Version", "Required", "Vulnerable", "Detected"]
 
 packages = []
+
+def update_packages(option):
+    for package in packages:
+        package_name = package['package_name']
+        required_version = package['required_version']
+        try:
+            cmd = "yum install {}-{}".format(package_name, required_version)
+            if option == 2:
+                user_input = input("Update package {} to version {} (y/N)? ".format(package_name, required_version))
+                if user_input == "y":
+                    resp = os.popen(cmd)
+                    logging.info(resp)
+            if option == 1:
+                resp = os.popen(cmd)
+                logging.info(resp)
+
+        exception Exception as e:
+            cmd = "yum install --skip-broken {}-{}".format(package_name, required_version)
+            resp = os.popen(cmd)
+            logging.info(resp)
 
 def is_valid_package_report(line):
     for keyword in ignore_keywords:
@@ -57,8 +78,28 @@ def patch_vm(qualys_json_file, severity):
     print(" List of vulnerable packages ")
     print("=============================")
     for package in packages:
-        print(package)
-            
+        package_name = package['package_name']
+        installed_version = package['installed_version']
+        required_version = package['required_version']
+
+        print("PackageName: {}, InstalledVersion: {}, RequiredVersion: {}".format(package_name, installed_version, required_version))
+
+    while True:
+        print("")
+        print("[1] Update all packages at once")
+        print("[2] Select the package to update")
+        print("[0] Exit the script")
+
+        user_input = input("Enter your option: ")
+        if user_input == 0:
+            sys.exit(0)
+        if user_input == 1:
+            print("Update all packages at once")
+            break
+        if user_input == 2:
+            print("Select the package to update")
+            break
+         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
