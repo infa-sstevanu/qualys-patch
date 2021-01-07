@@ -94,10 +94,10 @@ def patch_vm(qualys_json_file, severity):
         if user_input == 0:
             sys.exit(0)
         if user_input == 1:
-            print("Update all packages at once")
+            update_packages(1)
             break
         if user_input == 2:
-            print("Select the package to update")
+            update_packages(2)
             break
          
 if __name__ == '__main__':
