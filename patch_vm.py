@@ -1,23 +1,68 @@
 import argparse
 import json
-import sys
 import logging
+import subprocess
+import sys
 
 logging.basicConfig(format='[%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S%p]')
 
-parser = argparse.ArgumentParser()
+ignore_keywords = ["Package", "Installed", "Version", "Required", "Vulnerable", "Detected"]
 
 packages = []
+
+def update_packages(option):
+    def execute_yum_install(cmd):
+        print(cmd)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        (output, err) = p.communicate()
+        p_status = p.wait()
+        print(output.decode("utf-8"))
+
+    for package in packages:
+        package_name = package['package_name']
+        required_version = package['required_version']
+        try:
+            cmd = "yum install {}-{} -y".format(package_name, required_version)
+            if option == 2:
+                user_input = input("Update package {} to version {} [y/N]? ".format(package_name, required_version))
+                if user_input == 'y':
+                    execute_yum_install(cmd)
+            
+            if option == 1:
+                execute_yum_install(cmd)
+
+        except Exception as e:
+            logging.error(e)
+            cmd = "yum install --skip-broken {}-{} -y".format(package_name, required_version)
+            execute_yum_install(cmd)
+
+def is_valid_package_report(line):
+    for keyword in ignore_keywords:
+        if keyword in line:
+            return False
+    return True
 
 def list_package_to_update(detections, severity):
     for detection in detections:
         try:
             if int(detection['SEVERITY']) >= severity:
-                package = detection['RESULTS']
-                packages.append(package)
+                results = detection['RESULTS'].split('\n')
+		
+                for result in results:
+                    if is_valid_package_report(result):
+                        res = result.split('\t')
+                        if len(res) == 3:
+                            package = {
+                                "package_name": str(res[0]),
+                                "installed_version": str(res[1]),
+                                "required_version": str(res[2]),
+                            }                        
+                            packages.append(package)
+
         except Exception as e:
             logging.error(e)
-    
+            sys.exit(1)
+
 def patch_vm(qualys_json_file, severity):
     try:
         with open(qualys_json_file, 'r') as f:
@@ -33,11 +78,37 @@ def patch_vm(qualys_json_file, severity):
 
     except Exception as e:
         logging.error(e)
+        sys.exit(1)
 
+    print("=============================")
+    print(" List of vulnerable packages ")
+    print("=============================")
     for package in packages:
-        print(package)
-            
+        package_name = package['package_name']
+        installed_version = package['installed_version']
+        required_version = package['required_version']
+
+        print("PackageName: {}, InstalledVersion: {}, RequiredVersion: {}".format(package_name, installed_version, required_version))
+
+    while True:
+        print("")
+        print("[1] Update all packages at once")
+        print("[2] Select the package to update")
+        print("[0] Exit the script")
+
+        user_input = input("Enter your option: ")
+        if user_input == '0':
+            sys.exit(0)
+        if user_input == '1':
+            update_packages(1)
+            break
+        if user_input == '2':
+            update_packages(2)
+            break
+         
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
     parser.add_argument(
                 "-f", 
                 "--qualys_json_file", 
@@ -61,6 +132,6 @@ if __name__ == '__main__':
     
     if not qualys_json_file or not severity:
         print("Usage: ./patch_vm.py -f <QUALYS_JSON_FILE> -s <SEVERITY>")
-        sys.exit(0)
+        sys.exit(1)
 
     patch_vm(qualys_json_file, severity)
