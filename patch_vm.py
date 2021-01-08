@@ -83,6 +83,12 @@ def patch_vm(qualys_json_file, severity):
     print("=============================")
     print(" List of vulnerable packages ")
     print("=============================")
+    print("")
+
+    if not len(packages):
+        print("No vulnerable packages with severity level {}".format(severity))
+        sys.exit(0)
+
     for package in packages:
         package_name = package['package_name']
         installed_version = package['installed_version']
@@ -91,7 +97,6 @@ def patch_vm(qualys_json_file, severity):
         print("PackageName: {}, InstalledVersion: {}, RequiredVersion: {}".format(package_name, installed_version, required_version))
 
     while True:
-        print("")
         print("[1] Update all packages at once")
         print("[2] Select the package to update")
         print("[0] Exit the script")
