@@ -1,7 +1,7 @@
 import argparse
 import json
 import logging
-import os
+import subprocess
 import sys
 
 logging.basicConfig(format='[%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S%p]')
@@ -11,24 +11,30 @@ ignore_keywords = ["Package", "Installed", "Version", "Required", "Vulnerable", 
 packages = []
 
 def update_packages(option):
+    def execute_yum_install(cmd):
+        print(cmd)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        (output, err) = p.communicate()
+        p_status = p.wait()
+        print(output.decode("utf-8"))
+
     for package in packages:
         package_name = package['package_name']
         required_version = package['required_version']
         try:
-            cmd = "yum install {}-{}".format(package_name, required_version)
+            cmd = "yum install {}-{} -y".format(package_name, required_version)
             if option == 2:
-                user_input = input("Update package {} to version {} (y/N)? ".format(package_name, required_version))
-                if user_input == "y":
-                    resp = os.popen(cmd)
-                    logging.info(resp)
+                user_input = input("Update package {} to version {} [y/N]? ".format(package_name, required_version))
+                if user_input == 'y':
+                    execute_yum_install(cmd)
+            
             if option == 1:
-                resp = os.popen(cmd)
-                logging.info(resp)
+                execute_yum_install(cmd)
 
         except Exception as e:
-            cmd = "yum install --skip-broken {}-{}".format(package_name, required_version)
-            resp = os.popen(cmd)
-            logging.info(resp)
+            logging.error(e)
+            cmd = "yum install --skip-broken {}-{} -y".format(package_name, required_version)
+            execute_yum_install(cmd)
 
 def is_valid_package_report(line):
     for keyword in ignore_keywords:
@@ -91,12 +97,12 @@ def patch_vm(qualys_json_file, severity):
         print("[0] Exit the script")
 
         user_input = input("Enter your option: ")
-        if user_input == 0:
+        if user_input == '0':
             sys.exit(0)
-        if user_input == 1:
+        if user_input == '1':
             update_packages(1)
             break
-        if user_input == 2:
+        if user_input == '2':
             update_packages(2)
             break
          
