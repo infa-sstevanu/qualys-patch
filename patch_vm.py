@@ -23,13 +23,7 @@ def update_packages(option):
         required_version = package['required_version']
         try:
             cmd = "yum install {}-{} -y".format(package_name, required_version)
-            if option == 2:
-                user_input = input("Update package {} to version {} [y/N]? ".format(package_name, required_version))
-                if user_input == 'y':
-                    execute_yum_install(cmd)
-            
-            if option == 1:
-                execute_yum_install(cmd)
+            execute_yum_install(cmd)
 
         except Exception as e:
             logging.error(e)
@@ -63,7 +57,10 @@ def list_package_to_update(detections, severity):
             logging.error(e)
             sys.exit(1)
 
-def patch_vm(qualys_json_file, severity):
+def patch_vm(qualys_json_file):
+    # Severity level
+    severity = 3
+
     try:
         with open(qualys_json_file, 'r') as f:
             data = json.load(f)['HOST_LIST_VM_DETECTION_OUTPUT']['RESPONSE']['HOST_LIST']['HOST']
@@ -97,8 +94,7 @@ def patch_vm(qualys_json_file, severity):
         print("PackageName: {}, InstalledVersion: {}, RequiredVersion: {}".format(package_name, installed_version, required_version))
 
     while True:
-        print("[1] Update all packages at once")
-        print("[2] Select the package to update")
+        print("[1] Update all packages")
         print("[0] Exit the script")
 
         user_input = input("Enter your option: ")
@@ -106,9 +102,6 @@ def patch_vm(qualys_json_file, severity):
             sys.exit(0)
         if user_input == '1':
             update_packages(1)
-            break
-        if user_input == '2':
-            update_packages(2)
             break
          
 if __name__ == '__main__':
@@ -121,22 +114,13 @@ if __name__ == '__main__':
                 type=str,
                 help="the qualys vulnerability json file"
     )
-
-    parser.add_argument(
-                "-s",
-                "--severity",
-                metavar="severity",
-                type=int,
-                help="the severity level of the vulnerability"
-    )
     
     args = parser.parse_args()
-    
+
     qualys_json_file = args.qualys_json_file
-    severity = args.severity
     
-    if not qualys_json_file or not severity:
-        print("Usage: ./patch_vm.py -f <QUALYS_JSON_FILE> -s <SEVERITY>")
+    if not qualys_json_file:
+        print("Usage: ./patch_vm.py -f <QUALYS_JSON_FILE>")
         sys.exit(1)
 
-    patch_vm(qualys_json_file, severity)
+    patch_vm(qualys_json_file)
